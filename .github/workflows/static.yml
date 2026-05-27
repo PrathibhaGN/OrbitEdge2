@@ -1,0 +1,58 @@
+name: Call orbitedge-planner
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "orbitedge-planner.jsx"
+      - ".github/workflows/orbitedge-planner.yml"
+  workflow_dispatch:
+
+jobs:
+  call-orbitedge-planner:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify app file exists
+        run: |
+          test -f orbitedge-planner.jsx || (echo "orbitedge-planner.jsx not found" && exit 1)
+
+      - name: Create entry file
+        run: |
+          mkdir -p src dist
+          cp orbitedge-planner.jsx src/orbitedge-planner.jsx
+          cat > src/main.jsx << 'EOF'
+          import React from "react";
+          import { createRoot } from "react-dom/client";
+          import App from "./orbitedge-planner.jsx";
+
+          createRoot(document.getElementById("root")).render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>
+          );
+          EOF
+
+      - name: Call orbitedge-planner (build)
+        run: |
+          npx --yes esbuild src/main.jsx \
+            --bundle \
+            --jsx=automatic \
+            --external:react \
+            --external:react/jsx-runtime \
+            --external:react-dom/client \
+            --outfile=dist/main.js
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbitedge-planner-build
+          path: dist/main.js
